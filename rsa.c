@@ -4,73 +4,111 @@
 #include<time.h>
 #include<string.h>
 
-/*Acha o primo 1*/
-long int findPrimo()
-{
-    long int number = 1, number2 = 0, seed = 0, i = 0, j = 0, *aux, returnNumber = 0;
+#define MAX_RANDOM 100000
+#define FALSE 0
+#define TRUE 1
+#define BOOL int
 
-    srand( (unsigned)time(NULL) );
+typedef unsigned long long int ulli;
+/*Essa fun√ß√£o calcula a potencia entre numeros muito grandes, uma vez que as
+	fun√ß√µes tradicionais conseguem processar.
+	Ela calcula x^y mod p*/
+ulli power(ulli x, ulli y, ulli p){
+	ulli res = 1;
+	x = x % p;
+	while (y > 0){
+		if (y & 1) res = (res*x) % p;
+		y = y>>1;
+		x = (x*x) % p;
+	}
+	return res;
+}
+
+/*Para gerar os numeros aleatorios implementamos o m√©todo de millerRabin
+	Essa fun√ß√£o gera um primo*/
+BOOL miillerTest(ulli d, ulli n){
+	ulli a = 2 + rand() % (n - 4);
+	ulli x = power(a, d, n);
+
+	if (x == 1 || x == n-1){
+		return TRUE;
+	}
+
+	while (d != n-1){
+		x = (x * x) % n;
+		d *= 2;
+
+		if (x == 1)	 return FALSE;
+		if (x == n-1) return TRUE;
+	}
+
+	return FALSE;
+}
+
+/*Funcao auxiliar para o teste de miller que checa e valida se um n√∫mero √© primo
+ ou nao*/
+BOOL isPrime(ulli n, ulli k){
+	if (n <= 1 || n == 4) return FALSE;
+	if (n <= 3) return TRUE;
+
+	ulli d = n - 1;
+	while (d % 2 == 0) d /= 2;
+
+	for (ulli i = 0; i < k; i++){
+		if (miillerTest(d, n) == FALSE){
+			return FALSE;
+		}
+	}
+
+	return TRUE;
+}
+
+/*Funcao base para o m√©todo miller rabin, ela recebe um valor aleat√≥rio
+	e retorna o maior valor primo pr√≥ximo ao numero aleatorio*/
+ulli millerRabin(ulli number){
+  ulli k = 1;
+	ulli prime, n;
+	for (n = 1; n < number; n++){
+    if (isPrime(n, k)){
+        prime = n;
+    }
+  }
+
+	return prime;
+}
+
+/*Funcao que procura o primeiro primo para o metodo RSA (p), lembrando que o
+m√©todo para gerar o numero primo √© o metodo de Miller Rabin*/
+ulli findPrimo(){
+    ulli number = 1, number2 = 0, seed = 0;
+
+    srand((unsigned)time(NULL));
+
     number2 = rand();
     number = number2*number2;
+    number = number % MAX_RANDOM;
 
-
-    aux = (long int*)malloc(number*sizeof(long int));
-
-    for(i = 0; i < number; i++){
-        aux[i] = i;
-    }
-
-    for (i = 2; i <= number2; i++) {
-        if (aux[i] == i) {
-
-            returnNumber = i;
-
-            for (j = i+i; j <= number; j+=i) {
-                aux[j]=0; // removendo da lista
-            }
-        }
-    }
-   return returnNumber;
+    return millerRabin(number);
 }
 
-/*Acha o primo 2*/
-long int findPrimo2()
-{
-    long int number = 1, number2 = 0, seed = 0, i = 0, j = 0, *aux, returnNumber = 0;
+/*Funcao que procura o segundo primo para o metodo RSA (q), lembrando que o
+m√©todo para gerar o numero primo √© o metodo de Miller Rabin*/
+ulli findPrimo2(){
+	ulli number = 1, number2 = 0, seed = 0;
 
-    srand( (unsigned)time(NULL) );
-    number2 = rand()/7;
-    number = number2*number2;
+	srand( (unsigned)time(NULL) );
 
+	number2 = rand()/7;
+	number = number2*number2;
+	number = number % MAX_RANDOM;
 
-    aux = (long int*)malloc(number*sizeof(long int));
-
-    for(i = 0; i < number; i++){
-        aux[i] = i;
-    }
-
-    for (i = 2; i <= number2; i++) {
-        if (aux[i] == i) {
-
-            returnNumber = i;
-
-            for (j = i+i; j <= number; j+=i) {
-                aux[j]=0; // removendo da lista
-            }
-        }
-    }
-   return returnNumber;
+  return millerRabin(number);
 }
 
-/*Dois n˙meros s„o primos entre si se, e somente se, o MDC
-(M·ximo divisor comum) entre os dois È 1.
-Essa funÁ„o calcula o MDC, se ele for igual a 1, retorna 0,
-caso contr·rio, retorna o mdc*/
-int primeBetween(long int x, long int y)
-{
-    long int resto = 0, biggest = 0,  smallest = 0, aux = 0;
+/*Econtra um n√∫mero primo entre dois n√∫meros, X e Y*/
+int primeBetween(ulli x, ulli y){
+    ulli resto = 0, biggest = 0,  smallest = 0, aux = 0;
 
-    /*Tratamos o caso onde o e È maior que o z*/
     if(x > y){
         biggest = x;
         smallest = y;
@@ -79,8 +117,6 @@ int primeBetween(long int x, long int y)
         smallest = x;
     }
 
-    /*Encontramos o MDC, caso o resto seja 1, retornamos verdade
-    caso contr·rio, retornamos o menor divisor comum*/
     resto = biggest%smallest;
 
     while(resto != 0 || resto != 1){
@@ -102,28 +138,24 @@ int primeBetween(long int x, long int y)
     return smallest;
 }
 
-/*Encontra o valor de e.
-e precisa ser primo com z, e menor que n*/
-long int findE(long int z, long int n)
-{
-    long int e = 1, aux = 1;
+/*Fun√ß√£o que retorna o valor "e" que ser√° usado
+para a criptografia do RSA. */
+ulli findE(ulli z, ulli n){
+    ulli e = 1, aux = 1;
 
     while(aux != 0 && e < n){
         aux = primeBetween(z, e);
-     //   printf("%d ", aux);
         e++;
     }
-    //printf("%d ", e - 1);
  return (e - 1);
 }
 
-/*Algoritmo de Eucldies estendido, implementado com
-o auxÌlio da funÁ„o "primeBetween"*/
-long int findD(long int z, long int e)
-{
-    long int mdc = 0, aux = 1, i = 0, j = 0, biggest = 0, smallest = 0;
+/*Fun√ß√£o que retorna o valor "d" que ser√° usado
+para a criptografia do RSA. 
+An√°loga a "findD"*/
+ulli findD(ulli z, ulli e){
+    ulli mdc = 0, aux = 1, i = 0, j = 0, biggest = 0, smallest = 0;
 
-    /*Tratamos o caso onde o e È maior que o z*/
     if(z > e){
         biggest = z;
         smallest = e;
@@ -139,7 +171,6 @@ long int findD(long int z, long int e)
             aux = (j*e) - (i*z);
 
             if(aux == 1){
-              //  printf("%ld %ld\n", j, i);
                 return j;
             }
         }
@@ -147,25 +178,23 @@ long int findD(long int z, long int e)
     return -1;
 }
 
-/*Transforma a mensagem (que est· em texto ASCI) em
-n˙meros - no nosso caso, h· a traduÁ„o do ASCI para
-o seu respectivo inteiro*/
-void transformInNumber(char *message, long int *m)
-{
-    int size = 0, i = 0;
-    size = strlen(message);
-
-        for(i = 0; i < size; i++){
-            m[i] = (long int)message[i];
-         //   printf("%ld ", m[i]);
-        }
+/*Transforma os caracteres em numeros
+	message -> mensagem em caracteres
+	m ->vetor de inteiro que ira receber os caracteres ap√≥s os casts
+	size -> tamanho da mensagem
+*/
+void transformInNumber(char *message, ulli *m, int size){
+    int i = 0;
+    for(i = 0; i < size; i++){
+      m[i] = (ulli)message[i];
+    }
 }
 
-/*
-Transforma a mensagem de n˙meros, para textos
+/*Transforma os n√∫meros em caracteres
+	message -> mensagem em formato de inteiros
+	size -> tamanho da mensagem
 */
-char* transformInAscii(long int *message, int size)
-{
+char* transformInAscii(ulli *message, int size){
     int i = 0;
     char *m;
 
@@ -175,70 +204,134 @@ char* transformInAscii(long int *message, int size)
         m[i] = (char)message[i];
     }
 
- return m;
+    return m;
 }
+/*
+	Fun√ß√£o que realiza o RSA de fato, a parte de encripta√ß√£o
+	m -> mensagem representada por inteiros
+	e, n -> chaves
+	size -> tamanho da mensagem
+*/
+void rsaEncode(ulli *m, ulli e, ulli n, int size){
 
-/* Como os n˙meros podem ficar imensos, faÁo a exponenciaÁ„o
-por meio de uma operaÁ„o bit a bit
- */
-int myPow(long long a, long long b, int c) {
-	int res = 1;
-	while(b > 0) {
-		/* Need long multiplication else this will overflow... */
-		if(b & 1) {
-			res = (res * a) % c;
+		ulli i = 0;
+
+    FILE* encodedFile = fopen("encoded.txt", "w");
+
+		if(encodedFile == NULL){
+			printf("I could not open this file\n");
+			exit(0);
 		}
-		b = b >> 1;
-		a = (a * a) % c; /* Same deal here */
-	}
-	return res;
-}
-
-long int* rsaEncode(long int *m, long int e, long int n, long int size)
-{
-    long int i = 0, *c;
-
-    c = (long int*)malloc(size*sizeof(long int));
 
     for(i = 0; i < size; i++){
-        c[i] = myPow(m[i], e, n);
+        fprintf(encodedFile, "%llu\n", power(m[i], e, n));
     }
 
-    return c;
+		fclose(encodedFile);
+
 }
 
-long int* rsaDecode(long int *c, long int d, long int n, long int size)
-{
-    long int i = 0, *m;
+/*
+	Fun√ß√£o que realiza o RSA de fato, a parte de decripta√ß√£o
+	d, n -> chaves
+	size -> tamanho da mensagem
+*/
+void rsaDecode(ulli d, ulli n, int size){
+    ulli i = 0, c;
+		char letter;
 
-    m = (long int*)malloc(size*sizeof(long int));
+		FILE* encodedFile = fopen("encoded.txt", "r");
+		FILE* decodedFile = fopen("decoded.txt", "w");
+
+		if(encodedFile == NULL || decodedFile == NULL){
+			printf("I could not open this file\n");
+			exit(0);
+		}
 
     for(i = 0; i < size; i++){
-        m[i] = myPow(c[i], d, n);
+        fscanf(encodedFile, "%llu", &c);
+				letter = (char)power(c, d, n);
+				letter = letter - 3;
+				fprintf(decodedFile, "%c", letter);
     }
- return m;
+
+
+		fclose(encodedFile);
+		fclose(decodedFile);
+
 }
 
-int main()
-{
-   long int p = findPrimo(), q = findPrimo2(), e = 0, d = 0, size = 0;
-   long int n = p*q, z = (p-1)*(q-1);
-   long int *v2, *v3 ;
-   char *m;
-    e = findE(z, n);
-    d = findD(z, e);
 
-    long int vet[10];
-    size = (long int)strlen("azaa");
+/*Funcao que le de um arquivo texto
+	fp -> ponteiro pro arquivo
+	*size -> ponteiro pro n√∫mero de caracteres do arquivo
+*/
+char* readFile(FILE *fp, int *size){
+  char *message = NULL;
+  char c;
+  int i = 0;
 
-    transformInNumber("aaza", vet);
-    v2 = rsaEncode(vet, e, n, size);
-    v3 = rsaDecode(v2, d, n, size);
-    m = transformInAscii(v3, size);
+  do{
+    message = (char*) realloc(message, (*size + 1) * sizeof(char));
+    c = fgetc(fp);
+    message[*size] = c;
+    *size = *size + 1;
+  }while(c != EOF);
 
-    int i = 0;
-    for(i = 0; i < size; i++)
-        printf("%c", m[i]);
+  *size = *size - 1;
+	
+  for(i = 0; i < *size; i++){
+   message[i] = message[i] + 3;	
+  }
 
-return 0;
+  return message;
+}
+
+int main(int argc, char* argv[]){
+  FILE *fp;
+  int size = 0, i;
+
+  ulli p, q, e = 0, d = 0;
+  ulli n, z;
+
+  char *m, *message;
+
+  if(argc != 2){
+    printf("Usage: ./rsa file.txt\n");
+    exit(0);
+  }
+
+  fp = fopen(argv[1], "r");
+
+  if(fp == NULL){
+    printf("I could not open this file\n");
+    exit(0);
+  }
+
+  message = readFile(fp, &size);
+
+	fclose(fp);
+
+  p = findPrimo();
+  q = findPrimo2();
+
+  n = p*q;
+  z = (p-1)*(q-1);
+
+
+  e = findE(z, n);
+
+  d = findD(z, e);
+
+  ulli* vet = (ulli*) malloc(sizeof(ulli)* size);
+
+  transformInNumber(message, vet, size);
+  rsaEncode(vet, e, n, size);
+  rsaDecode(d, n, size);
+
+
+  free(vet);
+  free(message);
+
+  return 0;
 }
